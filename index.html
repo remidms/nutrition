@@ -1,31 +1,93 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Date du jour</title>
+  <meta charset="UTF-8" />
+  <title>Calories du jour</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin-top: 100px;
-      background-color: #f0f8ff;
-    }
-    #date {
-      font-size: 2em;
-      color: #333;
-    }
+    body { font-family: Arial; text-align: center; margin-top: 100px; }
+    #calories { font-weight: bold; font-size: 2em; }
   </style>
 </head>
 <body>
-  <h1>Nous sommes le :</h1>
-  <div id="date"></div>
+  <h1>Calories dépensées le <span id="date"></span></h1>
+  <p id="calories">Chargement...</p>
 
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script>
-    const aujourdHui = new Date();
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    const dateLocale = aujourdHui.toLocaleDateString('fr-FR', options);
+    // 1. Configuration Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyA2LfuviRqEAy4MI7pRG-LcAF2x6iLyF3k",
+      authDomain: "nutrition-ff18c.firebaseapp.com",
+      projectId: "nutrition-ff18c",
+      storageBucket: "nutrition-ff18c.firebasestorage.app",
+      messagingSenderId: "926868946162",
+      appId: "1:926868946162:web:983919b8b7915da71c246b",
+      measurementId: "G-LHD9300KHH"
+    };
 
-    document.getElementById("date").textContent = dateLocale;
+    // 2. Initialiser Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // 3. Fonction pour formater la date au format jj-mm-aaaa
+    function getDateKey() {
+      const d = new Date();
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}-${month}-${year}`;
+    }
+
+    // 4. Mettre à jour l'affichage de la date
+    const dateKey = getDateKey();
+    document.getElementById('date').textContent = dateKey;
+
+    // 5. Simuler la récupération des calories depuis Garmin (ici on met une valeur fixe, tu la remplaces par ta source)
+    // Exemple : calories du jour récupérées (à remplacer par ta vraie valeur)
+    const caloriesDuJour = 5000;
+
+    // 6. Fonction pour écrire ou mettre à jour la donnée dans Firestore
+    async function sauvegarderCalories(date, calories) {
+      try {
+        await db.collection('calories').doc(date).set({
+          date: date,
+          calories: calories
+        });
+        console.log("Données sauvegardées !");
+      } catch (e) {
+        console.error("Erreur sauvegarde Firestore", e);
+      }
+    }
+
+    // 7. Fonction pour lire la valeur de calories depuis Firestore
+    async function lireCalories(date) {
+      try {
+        const doc = await db.collection('calories').doc(date).get();
+        if (doc.exists) {
+          return doc.data().calories;
+        } else {
+          return null;
+        }
+      } catch (e) {
+        console.error("Erreur lecture Firestore", e);
+        return null;
+      }
+    }
+
+    // 8. Fonction principale pour gérer l’écriture + affichage
+    async function main() {
+      // Sauvegarder la valeur (ajoute ou remplace)
+      await sauvegarderCalories(dateKey, caloriesDuJour);
+
+      // Lire la valeur sauvegardée
+      const cal = await lireCalories(dateKey);
+
+      // Afficher dans la page
+      document.getElementById('calories').textContent = cal !== null ? cal + ' calories' : 'Aucune donnée';
+    }
+
+    main();
   </script>
 </body>
 </html>
