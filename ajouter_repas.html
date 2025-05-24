@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ajouter un repas détaillé</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <style>
+    nav {
+      background-color: #f0f0f0;
+      padding: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    nav a {
+      margin-right: 20px;
+      text-decoration: none;
+      font-weight: bold;
+      color: #333;
+    }
+    nav a:hover {
+      color: #007bff;
+    }
+    .aliment-group {
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="index.html">Calories</a>
+    <a href="aliments.html">Aliments</a>
+    <a href="ajouter_repas.html">Ajouter un repas</a>
+  </nav>
+
+  <h1>Ajouter un repas avec aliments</h1>
+
+  <form id="repasForm">
+    <label for="date">Date :</label><br />
+    <input type="date" id="date" name="date" required><br /><br />
+
+    <label for="type">Type de repas :</label><br />
+    <select id="type" required>
+      <option value="">--Choisir--</option>
+      <option value="petit-déjeuner">Petit-déjeuner</option>
+      <option value="déjeuner">Déjeuner</option>
+      <option value="dîner">Dîner</option>
+      <option value="activité">Activité</option>
+    </select><br /><br />
+
+    <div id="alimentsContainer"></div>
+    <button type="button" onclick="ajouterAliment()">➕ Ajouter un aliment</button><br /><br />
+
+    <button type="submit">Enregistrer le repas</button>
+  </form>
+
+  <p id="message"></p>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA2LfuviRqEAy4MI7pRG-LcAF2x6iLyF3k",
+      authDomain: "nutrition-ff18c.firebaseapp.com",
+      projectId: "nutrition-ff18c",
+      storageBucket: "nutrition-ff18c.firebasestorage.app",
+      messagingSenderId: "926868946162",
+      appId: "1:926868946162:web:983919b8b7915da71c246b"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let alimentsDispo = [];
+
+    async function chargerAliments() {
+      const snapshot = await db.collection("aliments").get();
+      alimentsDispo = snapshot.docs.map(doc => doc.data());
+      ajouterAliment(); // ajouter un aliment par défaut
+    }
+
+    function ajouterAliment() {
+      const container = document.getElementById("alimentsContainer");
+
+      const group = document.createElement("div");
+      group.className = "aliment-group";
+
+      const select = document.createElement("select");
+      select.required = true;
+
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.textContent = "-- Choisir un aliment --";
+      select.appendChild(defaultOption);
+
+      alimentsDispo.forEach(aliment => {
+        const option = document.createElement("option");
+        option.value = aliment.nom;
+        option.textContent = `${aliment.nom} (${aliment.calories} cal/100g)`;
+        option.dataset.calories = aliment.calories;
+        select.appendChild(option);
+      });
+
+      const inputQuantite = document.createElement("input");
+      inputQuantite.type = "number";
+      inputQuantite.placeholder = "Quantité (g)";
+      inputQuantite.required = true;
+      inputQuantite.min = 0;
+
+      group.appendChild(select);
+      group.appendChild(inputQuantite);
+      container.appendChild(group);
+    }
+
+    document.getElementById("repasForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const date = document.getElementById("date").value;
+      const type = document.getElementById("type").value;
+
+      const alimentGroups = document.querySelectorAll(".aliment-group");
+      let aliments = [];
+      let caloriesTotales = 0;
+
+      for (let group of alimentGroups) {
+        const select = group.querySelector("select");
+        const input = group.querySelector("input");
+        const nom = select.value;
+        const quantite = parseFloat(input.value);
+        const caloriesPar100g = parseFloat(select.selectedOptions[0].dataset.calories);
+
+        if (!nom || isNaN(quantite)) continue;
+
+        const calories = (caloriesPar100g / 100) * quantite;
+        caloriesTotales += calories;
+
+        aliments.push({ nom, quantite, calories: Math.round(calories) });
+      }
+
+      if (!date || !type || aliments.length === 0) {
+        document.getElementById("message").textContent = "Veuillez remplir tous les champs.";
+        return;
+      }
+
+      try {
+        await db.collection("repas_details").add({
+          date,
+          type,
+          aliments,
+          calories_totales: Math.round(caloriesTotales)
+        });
+
+        document.getElementById("message").textContent = "Repas enregistré avec succès.";
+        document.getElementById("repasForm").reset();
+        document.getElementById("alimentsContainer").innerHTML = "";
+        ajouterAliment();
+      } catch (err) {
+        console.error(err);
+        document.getElementById("message").textContent = "Erreur lors de l'enregistrement.";
+      }
+    });
+
+    chargerAliments();
+  </script>
+</body>
+</html>
