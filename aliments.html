@@ -6,14 +6,36 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <style>
+    /* Barre de navigation */
+    nav {
+      background-color: #f0f0f0;
+      padding: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    nav a {
+      margin-right: 20px;
+      text-decoration: none;
+      font-weight: bold;
+      color: #333;
+    }
+
+    nav a:hover {
+      color: #007bff;
+    }
+
+    /* Tableau */
     table, th, td {
       border: 1px solid black;
       border-collapse: collapse;
       padding: 8px;
     }
+
     th {
       background-color: #f2f2f2;
     }
+
     table {
       margin-top: 20px;
       width: 100%;
@@ -22,10 +44,12 @@
   </style>
 </head>
 <body>
-    <nav style="background-color: #f0f0f0; padding: 10px; margin-bottom: 20px;">
-  <a href="index.html" style="margin-right: 20px; text-decoration: none; font-weight: bold;">Calories</a>
-  <a href="aliments.html" style="text-decoration: none; font-weight: bold;">Aliments</a>
-</nav>
+
+  <!-- ✅ Ruban de navigation -->
+  <nav>
+    <a href="index.html">Calories</a>
+    <a href="aliments.html">Aliments</a>
+  </nav>
 
   <h1>Enregistrer un aliment</h1>
 
@@ -55,7 +79,7 @@
   </table>
 
   <script>
-    // 🔧 Configuration Firebase (remplace par la tienne si besoin)
+    // 🔧 Configuration Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyA2LfuviRqEAy4MI7pRG-LcAF2x6iLyF3k",
       authDomain: "nutrition-ff18c.firebaseapp.com",
