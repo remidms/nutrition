@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Enregistrer un aliment</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <style>
+    table, th, td {
+      border: 1px solid black;
+      border-collapse: collapse;
+      padding: 8px;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    table {
+      margin-top: 20px;
+      width: 100%;
+      max-width: 500px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Enregistrer un aliment</h1>
+
+  <form id="alimentForm">
+    <label for="nom">Nom de l'aliment :</label><br />
+    <input type="text" id="nom" name="nom" required /><br /><br />
+
+    <label for="calories">Calories pour 100g :</label><br />
+    <input type="number" id="calories" name="calories" required min="0" /><br /><br />
+
+    <button type="submit">Enregistrer</button>
+  </form>
+
+  <p id="message"></p>
+
+  <h2>Liste des aliments</h2>
+  <table id="alimentTable">
+    <thead>
+      <tr>
+        <th>Nom</th>
+        <th>Calories / 100g</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Les lignes vont être ajoutées ici -->
+    </tbody>
+  </table>
+
+  <script>
+    // 🔧 Configuration Firebase (remplace par la tienne si besoin)
+    const firebaseConfig = {
+      apiKey: "AIzaSyA2LfuviRqEAy4MI7pRG-LcAF2x6iLyF3k",
+      authDomain: "nutrition-ff18c.firebaseapp.com",
+      projectId: "nutrition-ff18c",
+      storageBucket: "nutrition-ff18c.firebasestorage.app",
+      messagingSenderId: "926868946162",
+      appId: "1:926868946162:web:983919b8b7915da71c246b",
+      measurementId: "G-LHD9300KHH"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // 🔄 Afficher tous les aliments
+    async function afficherAliments() {
+      const tbody = document.querySelector("#alimentTable tbody");
+      tbody.innerHTML = "";
+
+      try {
+        const snapshot = await db.collection("aliments").get();
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const row = document.createElement("tr");
+          row.innerHTML = `<td>${data.nom}</td><td>${data.calories}</td>`;
+          tbody.appendChild(row);
+        });
+      } catch (err) {
+        console.error("Erreur lors du chargement :", err);
+      }
+    }
+
+    // ➕ Enregistrement formulaire
+    document.getElementById("alimentForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nom = document.getElementById("nom").value.trim();
+      const calories = parseFloat(document.getElementById("calories").value);
+
+      if (!nom || isNaN(calories)) {
+        document.getElementById("message").textContent = "Veuillez remplir les champs correctement.";
+        return;
+      }
+
+      try {
+        await db.collection("aliments").add({ nom, calories });
+        document.getElementById("message").textContent = `Aliment "${nom}" enregistré !`;
+        document.getElementById("alimentForm").reset();
+        afficherAliments();
+      } catch (err) {
+        console.error("Erreur enregistrement :", err);
+        document.getElementById("message").textContent = "Erreur lors de l'enregistrement.";
+      }
+    });
+
+    // ▶️ Chargement initial
+    afficherAliments();
+  </script>
+</body>
+</html>
