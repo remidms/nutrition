@@ -2,12 +2,28 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Calories</title>
+  <title>Calories par jour</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <style>
+    button {
+      margin: 0 10px;
+      padding: 5px 10px;
+    }
+  </style>
 </head>
 <body>
-  <h1>Ajouter les calories manuellement</h1>
+  <h1>Calories par jour</h1>
+  <div>
+    <button id="prevDay">← Jour précédent</button>
+    <span id="selectedDate"></span>
+    <button id="nextDay">Jour suivant →</button>
+  </div>
+  <p id="caloriesInfo">Chargement des calories...</p>
+
+  <hr />
+
+  <h2>Ajouter/modifier les calories</h2>
   
   <form id="caloriesForm">
     <label for="dateInput">Date (jj-mm-aaaa) :</label>
@@ -24,7 +40,7 @@
   <p id="message"></p>
 
   <script>
-    // Configuration Firebase (remplace par la tienne)
+    // Config Firebase (remplace par ta config)
     const firebaseConfig = {
       apiKey: "AIzaSyA2LfuviRqEAy4MI7pRG-LcAF2x6iLyF3k",
       authDomain: "nutrition-ff18c.firebaseapp.com",
@@ -35,11 +51,70 @@
       measurementId: "G-LHD9300KHH"
     };
 
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Gérer la soumission du formulaire
+    // Fonction pour formater date jj-mm-aaaa
+    function formatDate(date) {
+      const d = date.getDate().toString().padStart(2, '0');
+      const m = (date.getMonth() + 1).toString().padStart(2, '0');
+      const y = date.getFullYear();
+      return `${d}-${m}-${y}`;
+    }
+
+    // Fonction pour parser jj-mm-aaaa en objet Date
+    function parseDate(str) {
+      const parts = str.split('-');
+      if(parts.length !== 3) return null;
+      const [d, m, y] = parts.map(Number);
+      if (!d || !m || !y) return null;
+      return new Date(y, m - 1, d);
+    }
+
+    // Date sélectionnée initiale = aujourd'hui
+    let selectedDate = new Date();
+
+    // Afficher la date sélectionnée dans la page
+    function afficherDate() {
+      const dateStr = formatDate(selectedDate);
+      document.getElementById('selectedDate').textContent = dateStr;
+      document.getElementById('dateInput').value = dateStr;
+      chargerCalories(dateStr);
+    }
+
+    // Charger les calories pour une date donnée
+    async function chargerCalories(dateStr) {
+      document.getElementById('caloriesInfo').textContent = "Chargement des calories...";
+      try {
+        const doc = await db.collection('calories').doc(dateStr).get();
+        if (doc.exists) {
+          const data = doc.data();
+          document.getElementById('caloriesInfo').textContent = `Calories dépensées le ${dateStr} : ${data.calories}`;
+          document.getElementById('caloriesInput').value = data.calories;
+        } else {
+          document.getElementById('caloriesInfo').textContent = `Aucune donnée pour le ${dateStr}.`;
+          document.getElementById('caloriesInput').value = '';
+        }
+      } catch (error) {
+        document.getElementById('caloriesInfo').textContent = "Erreur lors de la récupération.";
+        console.error(error);
+      }
+    }
+
+    // Boutons navigation jours
+    document.getElementById('prevDay').addEventListener('click', () => {
+      selectedDate.setDate(selectedDate.getDate() - 1);
+      afficherDate();
+      document.getElementById('message').textContent = '';
+    });
+
+    document.getElementById('nextDay').addEventListener('click', () => {
+      selectedDate.setDate(selectedDate.getDate() + 1);
+      afficherDate();
+      document.getElementById('message').textContent = '';
+    });
+
+    // Gestion formulaire
     document.getElementById('caloriesForm').addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -57,12 +132,19 @@
           calories: calories
         });
         document.getElementById('message').textContent = `Données enregistrées pour le ${date} (${calories} calories).`;
-        e.target.reset();
+
+        // Si la date modifiée est la date affichée, mettre à jour l'affichage
+        if (date === formatDate(selectedDate)) {
+          chargerCalories(date);
+        }
       } catch (error) {
         console.error('Erreur enregistrement:', error);
         document.getElementById('message').textContent = 'Erreur lors de l\'enregistrement.';
       }
     });
+
+    // Initialisation
+    afficherDate();
   </script>
 </body>
 </html>
