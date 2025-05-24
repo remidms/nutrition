@@ -5,6 +5,8 @@
   <title>Calories par jour</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     nav {
       background-color: #f0f0f0;
@@ -25,6 +27,10 @@
       margin: 0 10px;
       padding: 5px 10px;
     }
+    #graphContainer {
+      max-width: 600px;
+      margin-top: 30px;
+    }
   </style>
 </head>
 <body>
@@ -42,6 +48,10 @@
   </div>
   <p id="caloriesDepensees">Chargement...</p>
   <p id="caloriesMangees"></p>
+
+  <div id="graphContainer">
+    <canvas id="calorieChart"></canvas>
+  </div>
 
   <hr />
 
@@ -88,12 +98,21 @@
 
     let selectedDate = new Date();
 
+    let caloriesDepensees = 0;
+    let caloriesMangees = 0;
+    let calorieChart = null;
+
     function afficherDate() {
       const dateStr = formatDate(selectedDate);
       document.getElementById('selectedDate').textContent = dateStr;
       document.getElementById('dateInput').value = dateStr;
-      chargerCalories(dateStr);
-      chargerCaloriesMangees(dateStr);
+      chargerDonnees(dateStr);
+      document.getElementById('message').textContent = '';
+    }
+
+    async function chargerDonnees(dateStr) {
+      await Promise.all([chargerCalories(dateStr), chargerCaloriesMangees(dateStr)]);
+      mettreAJourGraphique();
     }
 
     async function chargerCalories(dateStr) {
@@ -102,13 +121,16 @@
         const doc = await db.collection('calories').doc(dateStr).get();
         if (doc.exists) {
           const data = doc.data();
-          document.getElementById('caloriesDepensees').textContent = `Calories dépensées le ${dateStr} : ${data.calories}`;
-          document.getElementById('caloriesInput').value = data.calories;
+          caloriesDepensees = data.calories || 0;
+          document.getElementById('caloriesDepensees').textContent = `Calories dépensées le ${dateStr} : ${caloriesDepensees}`;
+          document.getElementById('caloriesInput').value = caloriesDepensees;
         } else {
+          caloriesDepensees = 0;
           document.getElementById('caloriesDepensees').textContent = `Aucune donnée de dépense pour le ${dateStr}.`;
           document.getElementById('caloriesInput').value = '';
         }
       } catch (error) {
+        caloriesDepensees = 0;
         document.getElementById('caloriesDepensees').textContent = "Erreur lors de la récupération.";
         console.error(error);
       }
@@ -123,28 +145,69 @@
           const data = doc.data();
           total += data.calories_totales || 0;
         });
-
+        caloriesMangees = total;
         if (snapshot.empty) {
           document.getElementById('caloriesMangees').textContent = `Aucun repas enregistré pour le ${dateStr}.`;
         } else {
-          document.getElementById('caloriesMangees').textContent = `Calories mangées le ${dateStr} : ${total}`;
+          document.getElementById('caloriesMangees').textContent = `Calories mangées le ${dateStr} : ${caloriesMangees}`;
         }
       } catch (err) {
+        caloriesMangees = 0;
         document.getElementById('caloriesMangees').textContent = "Erreur lors du chargement des repas.";
         console.error(err);
+      }
+    }
+
+    function mettreAJourGraphique() {
+      const ctx = document.getElementById('calorieChart').getContext('2d');
+      const labels = ['Calories dépensées', 'Calories consommées'];
+      const data = [caloriesDepensees, caloriesMangees];
+
+      if (calorieChart) {
+        calorieChart.data.datasets[0].data = data;
+        calorieChart.update();
+      } else {
+        calorieChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Calories',
+              data: data,
+              backgroundColor: ['#007bff', '#28a745']
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Calories'
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                enabled: true
+              }
+            }
+          }
+        });
       }
     }
 
     document.getElementById('prevDay').addEventListener('click', () => {
       selectedDate.setDate(selectedDate.getDate() - 1);
       afficherDate();
-      document.getElementById('message').textContent = '';
     });
 
     document.getElementById('nextDay').addEventListener('click', () => {
       selectedDate.setDate(selectedDate.getDate() + 1);
       afficherDate();
-      document.getElementById('message').textContent = '';
     });
 
     document.getElementById('caloriesForm').addEventListener('submit', async (e) => {
@@ -164,7 +227,7 @@
         });
         document.getElementById('message').textContent = `Données enregistrées pour le ${date} (${calories} cal).`;
         if (date === formatDate(selectedDate)) {
-          chargerCalories(date);
+          chargerDonnees(date);
         }
       } catch (error) {
         console.error('Erreur enregistrement:', error);
