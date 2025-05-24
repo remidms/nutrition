@@ -2,20 +2,29 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Calories du jour</title>
-  <style>
-    body { font-family: Arial; text-align: center; margin-top: 100px; }
-    #calories { font-weight: bold; font-size: 2em; }
-  </style>
-</head>
-<body>
-  <h1>Calories dépensées le <span id="date"></span></h1>
-  <p id="calories">Chargement...</p>
-
+  <title>Calories</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <h1>Ajouter les calories manuellement</h1>
+  
+  <form id="caloriesForm">
+    <label for="dateInput">Date (jj-mm-aaaa) :</label>
+    <input type="text" id="dateInput" name="date" placeholder="ex: 24-05-2025" required pattern="\d{2}-\d{2}-\d{4}" />
+    <br /><br />
+    
+    <label for="caloriesInput">Calories :</label>
+    <input type="number" id="caloriesInput" name="calories" min="0" required />
+    <br /><br />
+    
+    <button type="submit">Envoyer</button>
+  </form>
+
+  <p id="message"></p>
+
   <script>
-    // 1. Configuration Firebase
+    // Configuration Firebase (remplace par la tienne)
     const firebaseConfig = {
       apiKey: "AIzaSyA2LfuviRqEAy4MI7pRG-LcAF2x6iLyF3k",
       authDomain: "nutrition-ff18c.firebaseapp.com",
@@ -26,68 +35,34 @@
       measurementId: "G-LHD9300KHH"
     };
 
-    // 2. Initialiser Firebase
+    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 3. Fonction pour formater la date au format jj-mm-aaaa
-    function getDateKey() {
-      const d = new Date();
-      const day = String(d.getDate()).padStart(2, '0');
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const year = d.getFullYear();
-      return `${day}-${month}-${year}`;
-    }
+    // Gérer la soumission du formulaire
+    document.getElementById('caloriesForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
 
-    // 4. Mettre à jour l'affichage de la date
-    const dateKey = getDateKey();
-    document.getElementById('date').textContent = dateKey;
+      const date = document.getElementById('dateInput').value;
+      const calories = parseInt(document.getElementById('caloriesInput').value);
 
-    // 5. Simuler la récupération des calories depuis Garmin (ici on met une valeur fixe, tu la remplaces par ta source)
-    // Exemple : calories du jour récupérées (à remplacer par ta vraie valeur)
-    const caloriesDuJour = 5000;
+      if (!date || isNaN(calories)) {
+        document.getElementById('message').textContent = 'Veuillez remplir correctement le formulaire.';
+        return;
+      }
 
-    // 6. Fonction pour écrire ou mettre à jour la donnée dans Firestore
-    async function sauvegarderCalories(date, calories) {
       try {
         await db.collection('calories').doc(date).set({
           date: date,
           calories: calories
         });
-        console.log("Données sauvegardées !");
-      } catch (e) {
-        console.error("Erreur sauvegarde Firestore", e);
+        document.getElementById('message').textContent = `Données enregistrées pour le ${date} (${calories} calories).`;
+        e.target.reset();
+      } catch (error) {
+        console.error('Erreur enregistrement:', error);
+        document.getElementById('message').textContent = 'Erreur lors de l\'enregistrement.';
       }
-    }
-
-    // 7. Fonction pour lire la valeur de calories depuis Firestore
-    async function lireCalories(date) {
-      try {
-        const doc = await db.collection('calories').doc(date).get();
-        if (doc.exists) {
-          return doc.data().calories;
-        } else {
-          return null;
-        }
-      } catch (e) {
-        console.error("Erreur lecture Firestore", e);
-        return null;
-      }
-    }
-
-    // 8. Fonction principale pour gérer l’écriture + affichage
-    async function main() {
-      // Sauvegarder la valeur (ajoute ou remplace)
-      await sauvegarderCalories(dateKey, caloriesDuJour);
-
-      // Lire la valeur sauvegardée
-      const cal = await lireCalories(dateKey);
-
-      // Afficher dans la page
-      document.getElementById('calories').textContent = cal !== null ? cal + ' calories' : 'Aucune donnée';
-    }
-
-    main();
+    });
   </script>
 </body>
 </html>
