@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Date du jour</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 100px;
+      background-color: #f0f8ff;
+    }
+    #date {
+      font-size: 2em;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>Nous sommes le :</h1>
+  <div id="date"></div>
+
+  <script>
+    const aujourdHui = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const dateLocale = aujourdHui.toLocaleDateString('fr-FR', options);
+
+    document.getElementById("date").textContent = dateLocale;
+  </script>
+</body>
+</html>
