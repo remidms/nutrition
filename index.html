@@ -31,6 +31,30 @@
       max-width: 600px;
       margin-top: 30px;
     }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 600px;
+      margin-bottom: 20px;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #eee;
+    }
+    #caloriesDepensees {
+      color: #28a745; /* vert */
+      font-weight: bold;
+    }
+    #caloriesMangees {
+      color: #dc3545; /* rouge */
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -52,6 +76,11 @@
   <div id="graphContainer">
     <canvas id="calorieChart"></canvas>
   </div>
+
+  <hr />
+
+  <h2>Détail des repas du jour</h2>
+  <div id="detailsRepas">Chargement des détails des repas...</div>
 
   <hr />
 
@@ -111,7 +140,11 @@
     }
 
     async function chargerDonnees(dateStr) {
-      await Promise.all([chargerCalories(dateStr), chargerCaloriesMangees(dateStr)]);
+      await Promise.all([
+        chargerCalories(dateStr),
+        chargerCaloriesMangees(dateStr),
+        chargerDetailsRepas(dateStr)
+      ]);
       mettreAJourGraphique();
     }
 
@@ -155,6 +188,57 @@
         caloriesMangees = 0;
         document.getElementById('caloriesMangees').textContent = "Erreur lors du chargement des repas.";
         console.error(err);
+      }
+    }
+
+    async function chargerDetailsRepas(dateStr) {
+      const container = document.getElementById('detailsRepas');
+      container.innerHTML = "Chargement des détails des repas...";
+      try {
+        const snapshot = await db.collection("repas_details").where("date", "==", dateStr).get();
+        if (snapshot.empty) {
+          container.textContent = `Aucun repas enregistré pour le ${dateStr}.`;
+          return;
+        }
+
+        let html = "";
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          html += `<h3>${data.repas || 'Repas sans nom'}</h3>`;
+          if (Array.isArray(data.aliments) && data.aliments.length > 0) {
+            html += `
+              <table>
+                <thead>
+                  <tr>
+                    <th>Aliment</th>
+                    <th>Quantité</th>
+                    <th>Calories</th>
+                  </tr>
+                </thead>
+                <tbody>
+            `;
+            data.aliments.forEach(aliment => {
+              html += `
+                <tr>
+                  <td>${aliment.nom || '-'}</td>
+                  <td>${aliment.quantite || '-'}</td>
+                  <td>${aliment.calories || 0}</td>
+                </tr>
+              `;
+            });
+            html += `
+                </tbody>
+              </table>
+              <p><strong>Total calories :</strong> ${data.calories_totales || 0}</p>
+            `;
+          } else {
+            html += `<p>Aucun aliment enregistré pour ce repas.</p>`;
+          }
+        });
+        container.innerHTML = html;
+      } catch (error) {
+        container.textContent = "Erreur lors du chargement des détails des repas.";
+        console.error(error);
       }
     }
 
@@ -212,29 +296,42 @@
 
     document.getElementById('caloriesForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const date = document.getElementById('dateInput').value;
-      const calories = parseInt(document.getElementById('caloriesInput').value);
+      const dateInput = document.getElementById('dateInput').value;
+      const caloriesInput = Number(document.getElementById('caloriesInput').value);
+      const message = document.getElementById('message');
 
-      if (!date || isNaN(calories)) {
-        document.getElementById('message').textContent = 'Veuillez remplir correctement le formulaire.';
+      // Validation simple de date
+      if (!dateInput.match(/^\d{2}-\d{2}-\d{4}$/)) {
+        message.textContent = "Date invalide, format jj-mm-aaaa requis.";
+        message.style.color = "red";
+        return;
+      }
+      if (isNaN(caloriesInput) || caloriesInput < 0) {
+        message.textContent = "Calories invalides.";
+        message.style.color = "red";
         return;
       }
 
       try {
-        await db.collection('calories').doc(date).set({
-          date: date,
-          calories: calories
+        await db.collection('calories').doc(dateInput).set({
+          calories: caloriesInput
         });
-        document.getElementById('message').textContent = `Données enregistrées pour le ${date} (${calories} cal).`;
-        if (date === formatDate(selectedDate)) {
-          chargerDonnees(date);
+        message.textContent = "Calories dépensées mises à jour avec succès.";
+        message.style.color = "green";
+
+        if (formatDate(selectedDate) === dateInput) {
+          caloriesDepensees = caloriesInput;
+          document.getElementById('caloriesDepensees').textContent = `Calories dépensées le ${dateInput} : ${caloriesDepensees}`;
+          mettreAJourGraphique();
         }
       } catch (error) {
-        console.error('Erreur enregistrement:', error);
-        document.getElementById('message').textContent = 'Erreur lors de l\'enregistrement.';
+        message.textContent = "Erreur lors de la mise à jour.";
+        message.style.color = "red";
+        console.error(error);
       }
     });
 
+    // Initialisation
     afficherDate();
   </script>
 </body>
